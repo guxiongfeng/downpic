@@ -19,7 +19,6 @@ const log = {
         console.log(pico.red(`${figures.cross} ${msg.join(' ')}`))
 }
 
-// https://file.io/
 async function main() {
     let root = path.resolve(__dirname, '../comics-zip')
 
@@ -31,37 +30,51 @@ async function main() {
         }
     }
 
-    const comics = await fs.readdir(root)
-    const task = comics.map(async (comic) => {
+    // 获取目录下所有项目
+    const items = await fs.readdir(root)
+    
+    // 过滤并处理任务
+    for (const item of items) {
+        const fullPath = path.join(root, item)
+        const stats = await fs.stat(fullPath)
+
+        // 核心修改：只处理文件夹，跳过文件（如 done.txt）
+        if (!stats.isDirectory()) {
+            continue 
+        }
+
         try {
+            log.info(`正在打包并上传: ${item}...`)
             const zip = new AdmZip()
-            // don't use promise function of AdmZip, its have too many bugs
-            zip.addLocalFolder(path.join(root, comic))
+            zip.addLocalFolder(fullPath)
             const zipBuffer = zip.toBuffer()
-            const filename = `${comic}.zip`
+            const filename = `${item}.zip`
 
             if (zipBuffer.byteLength < MAX_SIZE) {
                 const file = new File([zipBuffer], filename, {
                     type: mime.getType('zip')
                 })
+                
                 const form = new FormData()
                 form.append('file', file)
+
                 const { data } = await axios.post(
-                    `https://file.io?title=${filename}`,
+                    `https://file.io?title=${encodeURIComponent(filename)}`,
                     form
                 )
 
                 console.log(
-                    `${pico.cyan(filename)} 已上传到 file.io. 下载地址：${pico.green(data.link)}`
+                    `${pico.cyan(filename)} 已上传。下载地址：${pico.green(data.link)}`
                 )
             } else {
-                log.warn(`${filename} 大小超过了 2GB`)
+                log.warn(`${filename} 大小超过了 2GB，跳过上传`)
             }
         } catch (error) {
-            log.error(`「${comic}」上传失败：`, error.message)
+            log.error(`「${item}」处理失败：`, error.message)
         }
-    })
-    return Promise.allSettled(task)
+    }
+    
+    log.info('所有任务处理完毕')
 }
 
-main()
+main().catch(err => log.error('程序运行崩溃：', err.message))
