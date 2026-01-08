@@ -63,19 +63,6 @@ async function main() {
                     form
                 )
 
-                // 优化点：增加对 data 类型的检查
-                // 如果 data.link 是函数，尝试从 data.data.link 获取（某些 axios 版本会包装一层）
-                // 或者直接确保取到的是字符串
-                const downloadLink = typeof data.link === 'string' ? data.link : (data.data?.link || '获取失败');
-
-                if (data.success || downloadLink !== '获取失败') {
-                    console.log(
-                        `${pico.cyan(filename)} 已上传。下载地址：${pico.green(downloadLink)}`
-                    )
-                } else {
-                    log.error(`「${filename}」上传虽然成功但未获取到链接`, JSON.stringify(data));
-                }
-
                 console.log(
                     `${pico.cyan(filename)} 已上传。下载地址：${pico.green(data.link)}`
                 )
